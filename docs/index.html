@@ -247,7 +247,7 @@
     function startKayakGame() {
       container.innerHTML = `
         <h2>皮划艇挑战</h2>
-        <p>用左右方向键控制皮划艇，躲避浪花，接住水母和螃蟹！达到 1000 分及以上可获得碎片奖励。</p>
+        <p>用左右方向键控制皮划艇，躲避浪花，接住水母和螃蟹！达到 1500 分及以上可获得碎片奖励，超过 1500 分游戏自动结束！</p>
         <canvas id="kayakCanvas" width="400" height="300"></canvas>
         <div id="message"></div>
         <button class="button" id="restartBtn" style="display:none; margin-top:15px;">重新开始</button>
@@ -272,8 +272,6 @@
       const itemInterval = 700;
 
       // 定义物品类型
-      // wave: 浪花（躲避），jellyfish: 水母（+10分），crab: 螃蟹（+20分）
-      // 每个物品有x,y,size,type
       const ITEM_TYPES = [
         {type: 'wave', color: '#3399ff', size: 30},      // 浪花 蓝色圆
         {type: 'jellyfish', color: '#cc33ff', size: 25}, // 水母 紫色椭圆
@@ -281,7 +279,6 @@
       ];
 
       function createItem() {
-        // 生成概率：浪花60%，水母25%，螃蟹15%
         const rand = Math.random();
         let itemType;
         if (rand < 0.6) itemType = ITEM_TYPES[0];
@@ -334,7 +331,6 @@
             if (item.type === 'wave') {
               return true; // 撞浪花 游戏结束
             } else {
-              // 接到水母或螃蟹，得分并移除该物品
               if (item.type === 'jellyfish') score += 10;
               else if (item.type === 'crab') score += 20;
               items.splice(i, 1);
@@ -353,9 +349,19 @@
 
       function gameLoop(timestamp) {
         if (gameOver) return;
+
+        // 游戏自动结束条件
+        if (score >= 1500) {
+          gameOver = true;
+          restartBtn.style.display = 'inline-block';
+          messageEl.textContent = `🎉 恭喜！你得了 ${score} 分，达到最高分，获得 1 个碎片！游戏自动结束。`;
+          fragmentCount++;
+          updateCounter();
+          return;
+        }
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 画沙滩
         ctx.fillStyle = '#f2d16b';
         ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
 
@@ -363,9 +369,7 @@
         drawItems();
         drawScore();
 
-        // 物品下落
         items.forEach(item => item.y += 4);
-        // 超出底部删除
         items = items.filter(item => item.y < canvas.height);
 
         if (!lastItemTime) lastItemTime = timestamp;
@@ -380,12 +384,12 @@
         if (checkCollision()) {
           gameOver = true;
           restartBtn.style.display = 'inline-block';
-          if (score >= 1000) {
+          if (score >= 1500) {
             messageEl.textContent = `💥 撞到浪花，游戏结束！你得了 ${score} 分，获得 1 个碎片！`;
             fragmentCount++;
             updateCounter();
           } else {
-            messageEl.textContent = `💥 撞到浪花，游戏结束！你得了 ${score} 分，未达到 1000 分碎片门槛，继续努力！`;
+            messageEl.textContent = `💥 撞到浪花，游戏结束！你得了 ${score} 分，未达到 1500 分碎片门槛，继续努力！`;
           }
         } else {
           score++;
@@ -422,3 +426,4 @@
   </script>
 </body>
 </html>
+
