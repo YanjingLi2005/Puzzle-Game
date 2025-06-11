@@ -52,13 +52,12 @@
       gap: 1px;
     }
     .tile {
-      width: 80px;
-      height: 80px;
-      background-size: 320px 320px;
-      border: 1px solid #ccc;
-      cursor: grab;
-      user-select: none;
-    }
+      border: 1px solid #999;
+      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      background-repeat: no-repeat;
+    }    
     #message {
       font-size: 18px;
       margin-top: 15px;
@@ -83,11 +82,18 @@
   <p>生日快乐，静怡宝宝！这是一个 Puzzle Adventure! 最近宝宝练车忙忙的，我每天学完习想你了就做一会儿这个礼物，就觉得心很充实。选择你的挑战：</p>
 
   <div>
-    <button class="button" onclick="startGastownPuzzle()">Gastown 拼图</button>
     <button class="button" onclick="startFlightGame()">航线大作战</button>
     <button class="button" onclick="startKayakGame()">皮划艇挑战</button>
     <button class="button" onclick="startLegolandPetGame()">乐高宠物养成</button>
   </div>
+  
+  <!-- 添加拼图选择按钮 -->
+  <div style="margin-top: 20px;">
+    <button class="button" onclick="startGastownPuzzle()">拼图一：Gastown</button>
+    <button class="button" onclick="startKittyPuzzle()">拼图二：电话小咪</button>
+    <button class="button" onclick="startStanleyParkPuzzle()">拼图三：第一次</button>
+  </div>
+  
 
   <div class="fragment-counter" id="fragmentCounter">当前碎片：0 / 5</div>
 
@@ -163,81 +169,110 @@ drawSimplePixelDaisy(ctx, 0, 0, 6);
     }
 
     // === Gastown 拼图 ===
-    function startGastownPuzzle() {
-      container.innerHTML = `
-        <h2>Gastown 夜间拼图</h2>
-        <p>拖动每块拼图到正确的位置。共 4x4 拼图，请认真观察图案！</p>
-        <div id="puzzle"></div>
-        <p id="message"></p>
-      `;
+    
 
-      const puzzle = document.getElementById("puzzle");
-      const message = document.getElementById("message");
-      const size = 4;
-      let tiles = [];
+function startGastownPuzzle() {
+  startPuzzle("Gastown 夜间拼图", "https://i.imgur.com/5LNUa1Q.png");
+}
 
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          const tile = document.createElement("div");
-          tile.className = "tile";
-          tile.style.backgroundImage = "url('https://i.imgur.com/5LNUa1Q.png')";
-          tile.style.backgroundPosition = `-${x * 80}px -${y * 80}px`;
-          tile.dataset.correct = `${y * size + x}`;
-          tiles.push(tile);
-        }
-      }
+function startKittyPuzzle() {
+  startPuzzle("电话小咪", "https://i.imgur.com/gi1rk1G.png");
+}
 
-      tiles.sort(() => Math.random() - 0.5);
-      tiles.forEach((tile, idx) => {
-        tile.dataset.index = idx;
-        tile.draggable = true;
-        tile.addEventListener("dragstart", dragStart);
-        tile.addEventListener("dragover", dragOver);
-        tile.addEventListener("drop", drop);
-        puzzle.appendChild(tile);
-      });
+function startStanleyParkPuzzle() {
+  startPuzzle("这是第一次你来找我的时候拍的照片！我当时好开心。（咪脚晒得黑黢黢的）", "https://i.imgur.com/kPcRFmT.png");
+}
 
-      let dragged;
+// === 通用拼图函数 ===
+function startPuzzle(title, imageUrl) {
+  const puzzleSize = 320;  // 拼图容器大小，和CSS中一致
+  const gap = 1;           // gap大小，单位px，和CSS一致
+  const size = 4;          // 4x4拼图
+  const tileSize = (puzzleSize - gap * (size - 1)) / size;  // 单块大小
 
-      function dragStart(e) {
-        dragged = e.target;
-      }
+  container.innerHTML = `
+    <h2>${title}</h2>
+    <p>拖动每块拼图到正确的位置。共 4x4 拼图，请认真观察图案！</p>
+    <div id="puzzle" style="width: 320px; height: 320px; display: flex; flex-wrap: wrap;"></div>
+    <p id="message"></p>
+  `;
 
-      function dragOver(e) {
-        e.preventDefault();
-      }
+  const puzzle = document.getElementById("puzzle");
+  const message = document.getElementById("message");
+  let tiles = [];
 
-      function drop(e) {
-        e.preventDefault();
-        if (dragged !== e.target) {
-          const from = dragged.dataset.index;
-          const to = e.target.dataset.index;
-
-          puzzle.insertBefore(dragged, puzzle.children[to]);
-          puzzle.insertBefore(e.target, puzzle.children[from]);
-
-          updateIndices();
-          checkWin();
-        }
-      }
-
-      function updateIndices() {
-        Array.from(puzzle.children).forEach((tile, idx) => {
-          tile.dataset.index = idx;
-        });
-      }
-
-      function checkWin() {
-        const isCorrect = Array.from(puzzle.children).every((tile, idx) => tile.dataset.correct == idx);
-        if (isCorrect) {
-          message.textContent = "🎉 拼图成功！你获得了一个碎片！";
-          fragmentCount++;
-          updateCounter();
-        } else {
-          message.textContent = "";
-        }
-      }
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const tile = document.createElement("div");
+      tile.className = "tile";
+  
+      // 这里放你的代码，设置每个拼图块的宽高和背景样式
+      tile.style.width = `${tileSize}px`;
+      tile.style.height = `${tileSize}px`;
+      tile.style.border = "1px solid #999";
+      tile.style.boxSizing = "border-box";
+      tile.style.backgroundImage = `url('${imageUrl}')`;
+      tile.style.backgroundSize = `${puzzleSize}px ${puzzleSize}px`;
+      tile.style.backgroundRepeat = "no-repeat";
+      tile.style.backgroundPosition = `-${x * tileSize}px -${y * tileSize}px`;
+  
+      tile.dataset.correct = `${y * size + x}`;
+      tiles.push(tile);
     }
+  }
+  
+
+  tiles.sort(() => Math.random() - 0.5);
+  tiles.forEach((tile, idx) => {
+    tile.dataset.index = idx;
+    tile.draggable = true;
+    tile.addEventListener("dragstart", dragStart);
+    tile.addEventListener("dragover", dragOver);
+    tile.addEventListener("drop", drop);
+    puzzle.appendChild(tile);
+  });
+
+  let dragged;
+
+  function dragStart(e) {
+    dragged = e.target;
+  }
+
+  function dragOver(e) {
+    e.preventDefault();
+  }
+
+  function drop(e) {
+    e.preventDefault();
+    if (dragged !== e.target) {
+      const from = dragged.dataset.index;
+      const to = e.target.dataset.index;
+
+      puzzle.insertBefore(dragged, puzzle.children[to]);
+      puzzle.insertBefore(e.target, puzzle.children[from]);
+
+      updateIndices();
+      checkWin();
+    }
+  }
+
+  function updateIndices() {
+    Array.from(puzzle.children).forEach((tile, idx) => {
+      tile.dataset.index = idx;
+    });
+  }
+
+  function checkWin() {
+    const isCorrect = Array.from(puzzle.children).every((tile, idx) => tile.dataset.correct == idx);
+    if (isCorrect) {
+      message.textContent = "🎉 拼图成功！你获得了一个碎片！";
+      fragmentCount++;
+      updateCounter();
+    } else {
+      message.textContent = "";
+    }
+  }
+}
 
     // === 航线大作战 
     function startFlightGame() {
