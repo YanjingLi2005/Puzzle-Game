@@ -86,9 +86,10 @@
     <button class="button" onclick="startGastownPuzzle()">Gastown 拼图</button>
     <button class="button" onclick="startFlightGame()">航线大作战</button>
     <button class="button" onclick="startKayakGame()">皮划艇挑战</button>
+    <button class="button" onclick="startLegolandPetGame()">乐高宠物养成</button>
   </div>
 
-  <div class="fragment-counter" id="fragmentCounter">当前碎片：0 / 50</div>
+  <div class="fragment-counter" id="fragmentCounter">当前碎片：0 / 5</div>
 
   <div id="game-container"></div>
 
@@ -158,7 +159,7 @@ drawSimplePixelDaisy(ctx, 0, 0, 6);
 
 
     function updateCounter() {
-      counter.innerText = `当前碎片：${fragmentCount} / 50`;
+      counter.innerText = `当前碎片：${fragmentCount} / 5`;
     }
 
     // === Gastown 拼图 ===
@@ -505,6 +506,379 @@ drawSimplePixelDaisy(ctx, 0, 0, 6);
       document.removeEventListener("keydown", keyHandler);
       document.addEventListener("keydown", keyHandler);
       initGame();
+    }
+    
+    // === 乐高宠物养成 ===
+
+    function startLegolandPetGame() {
+      const container = document.getElementById('game-container');
+      container.innerHTML = `
+        <h2>乐高乐园：积木宠物养成 🐾</h2>
+        <p>用方向键移动积木小人，靠近积木宠物互动，给它喂食积木块吧！</p>
+        <canvas id="petCanvas" width="400" height="400" style="background:#d0f0c0; display:block; margin: 20px auto; border: 3px solid #4CAF50; border-radius: 15px;"></canvas>
+        <div id="petStatus" style="font-family: 'Press Start 2P', monospace; font-size: 16px; color:#336633; margin-top:10px;">
+          积木块（食物）：0 / 5 | 宠物心情：😊
+        </div>
+      `;
+    
+      const canvas = document.getElementById('petCanvas');
+      const ctx = canvas.getContext('2d');
+    
+      const gridSize = 40;
+      const gridCount = 10;
+    
+      let player = { x: 0, y: 0 };
+      let pet = { x: 5, y: 5, mood: 5 }; // mood 0-10
+      let foodBlocks = [];
+      const maxFood = 5;
+      let collectedFood = 0;
+    
+      function randomGridPosition() {
+        return {
+          x: Math.floor(Math.random() * gridCount),
+          y: Math.floor(Math.random() * gridCount)
+        };
+      }
+    
+      // 初始化食物块随机散布，不和玩家宠物重叠
+      while (foodBlocks.length < maxFood) {
+        let pos = randomGridPosition();
+        if (
+          !(pos.x === player.x && pos.y === player.y) &&
+          !(pos.x === pet.x && pos.y === pet.y) &&
+          !foodBlocks.some(f => f.x === pos.x && f.y === pos.y)
+        ) {
+          foodBlocks.push(pos);
+        }
+      }
+    
+      function drawGrid() {
+        ctx.strokeStyle = '#a3c293';
+        for (let i = 0; i <= gridCount; i++) {
+          ctx.beginPath();
+          ctx.moveTo(i * gridSize, 0);
+          ctx.lineTo(i * gridSize, gridCount * gridSize);
+          ctx.stroke();
+    
+          ctx.beginPath();
+          ctx.moveTo(0, i * gridSize);
+          ctx.lineTo(gridCount * gridSize, i * gridSize);
+          ctx.stroke();
+        }
+      }
+    
+      function drawPlayer() {
+        const x = player.x * gridSize;
+        const y = player.y * gridSize;
+        ctx.fillStyle = '#ff9966'; // 橙色积木人
+        ctx.fillRect(x + 10, y + 10, gridSize - 20, gridSize - 20);
+        // 眼睛
+        ctx.fillStyle = '#000';
+        ctx.fillRect(x + 18, y + 18, 5, 5);
+        ctx.fillRect(x + 27, y + 18, 5, 5);
+      }
+    
+      function drawPet() {
+        const x = pet.x * gridSize;
+        const y = pet.y * gridSize;
+    
+        // 宠物根据心情颜色变化
+        let baseColor = pet.mood > 7 ? '#66cc66' : pet.mood > 3 ? '#99cc99' : '#cccccc';
+        ctx.fillStyle = baseColor;
+    
+        ctx.fillRect(x + 8, y + 8, gridSize - 16, gridSize - 16);
+    
+        // 宠物眼睛（简单表情）
+        ctx.fillStyle = pet.mood > 4 ? '#000' : '#666666';
+        ctx.fillRect(x + 15, y + 20, 6, 6);
+        ctx.fillRect(x + 27, y + 20, 6, 6);
+    
+        // 如果靠近玩家，宠物“跳跃”表现互动
+        if (Math.abs(player.x - pet.x) <= 1 && Math.abs(player.y - pet.y) <= 1) {
+          ctx.fillStyle = '#ffaa00';
+          ctx.beginPath();
+          ctx.arc(x + gridSize/2, y + 5, 8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    
+      function drawFood() {
+        foodBlocks.forEach(f => {
+          const x = f.x * gridSize;
+          const y = f.y * gridSize;
+          ctx.fillStyle = '#ff4444'; // 红色小积木块当食物
+          ctx.fillRect(x + 15, y + 15, gridSize - 30, gridSize - 30);
+        });
+      }
+    
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGrid();
+        drawFood();
+        drawPlayer();
+        drawPet();
+      }
+    
+      function updateStatus() {
+        const status = document.getElementById('petStatus');
+        let moodEmoji = '😐';
+        if (pet.mood > 7) moodEmoji = '😊';
+        else if (pet.mood < 3) moodEmoji = '😢';
+    
+        status.textContent = `积木块（食物）：${collectedFood} / ${maxFood} | 宠物心情：${moodEmoji}`;
+      }
+    
+      function movePlayer(dx, dy) {
+        const nx = player.x + dx;
+        const ny = player.y + dy;
+        if (nx >= 0 && nx < gridCount && ny >= 0 && ny < gridCount) {
+          player.x = nx;
+          player.y = ny;
+    
+          // 检查是否吃到食物
+          let idx = foodBlocks.findIndex(f => f.x === nx && f.y === ny);
+          if (idx !== -1) {
+            foodBlocks.splice(idx, 1);
+            collectedFood++;
+            pet.mood = Math.min(10, pet.mood + 2); // 喂食提升心情
+            updateStatus();
+          }
+    
+          draw();
+        }
+        // 如果靠近宠物且还没答题
+    if (Math.abs(player.x - pet.x) <= 1 && Math.abs(player.y - pet.y) <= 1 && collectedFood < maxFood) {
+  askPetQuestions((canFeed) => {
+    if (canFeed) {
+      // 生成一个新的食物
+      let newFood;
+      do {
+        newFood = randomGridPosition();
+      } while (
+        foodBlocks.some(f => f.x === newFood.x && f.y === newFood.y) ||
+        (newFood.x === player.x && newFood.y === player.y) ||
+        (newFood.x === pet.x && newFood.y === pet.y)
+      );
+      foodBlocks.push(newFood);
+      draw();
+    }
+  });
+}
+
+      }
+
+
+// 数独题库放全局
+const sudokuPuzzles = {
+  easy: [
+    [
+      [8,0,0,6,1,2,0,4,0],
+      [5,0,0,0,0,8,0,1,0],
+      [1,0,0,0,3,5,2,8,0],
+      [0,8,0,0,0,0,4,0,9],
+      [0,1,0,8,4,9,0,3,2],
+      [0,4,0,3,2,0,0,0,0],
+      [0,7,0,2,5,0,1,0,0],
+      [4,2,1,0,7,0,5,0,0],
+      [0,0,0,1,8,0,0,0,0]
+    ]
+  ],
+  medium: [
+    [
+      [0,3,0,0,7,0,2,0,5],
+      [7,0,0,1,0,4,0,0,0],
+      [0,0,2,0,9,0,8,1,0],
+      [0,8,6,0,0,0,0,0,4],
+      [0,0,0,3,0,0,6,8,0],
+      [0,0,0,0,0,0,0,7,0],
+      [0,1,4,0,0,5,0,0,2],
+      [0,0,5,4,0,0,1,9,8],
+      [2,0,0,0,0,0,0,5,6]
+    ]
+  ],
+  hard: [
+    [
+      [0,0,0,0,0,4,7,0,0],
+      [5,0,4,0,0,0,0,0,0],
+      [2,0,8,0,0,6,0,4,9],
+      [0,0,7,0,0,0,0,5,0],
+      [9,4,0,0,0,0,0,1,0],
+      [3,0,0,0,0,0,0,0,0],
+      [0,5,0,0,6,0,0,0,0],
+      [0,8,0,0,0,3,0,9,0],
+      [0,3,2,0,0,0,6,8,0]
+    ]
+  ]
+};
+
+function generateSudokuHTML(board) {
+  let html = '<table style="border-collapse: collapse;">';
+  for(let i=0; i<9; i++) {
+    html += '<tr>';
+    for(let j=0; j<9; j++) {
+      const val = board[i][j];
+      if(val !== 0) {
+        html += `<td><input type="text" maxlength="1" value="${val}" readonly style="width:24px; height:24px; text-align:center; background:#eee; border:1px solid #ccc;"></td>`;
+      } else {
+        html += `<td><input type="text" maxlength="1" value="" style="width:24px; height:24px; text-align:center; border:1px solid #ccc;"></td>`;
+      }
+    }
+    html += '</tr>';
+  }
+  html += '</table>';
+  return html;
+}
+
+function askPetQuestions(callback) {
+  let currentIndex = 0;
+  let answersCorrect = 0;
+  let difficulty = null;
+
+  // 先弹出难度选择框
+  const diffPopup = document.createElement('div');
+  diffPopup.style.position = 'fixed';
+  diffPopup.style.top = '50%';
+  diffPopup.style.left = '50%';
+  diffPopup.style.transform = 'translate(-50%, -50%)';
+  diffPopup.style.background = '#fff';
+  diffPopup.style.padding = '20px';
+  diffPopup.style.border = '2px solid #666';
+  diffPopup.style.zIndex = '10000';
+  diffPopup.style.fontFamily = "'Press Start 2P', monospace";
+  diffPopup.innerHTML = `
+    <p>请选择难度等级：</p>
+    <button id="diffEasy">简单</button>
+    <button id="diffMedium">中等</button>
+    <button id="diffHard">困难</button>
+    <button id="diffCancel" style="color:red;">取消</button>
+  `;
+  document.body.appendChild(diffPopup);
+
+  function startQuestions() {
+    document.body.removeChild(diffPopup);
+    askNext();
+  }
+
+  document.getElementById('diffEasy').onclick = () => { difficulty = 'easy'; startQuestions(); };
+  document.getElementById('diffMedium').onclick = () => { difficulty = 'medium'; startQuestions(); };
+  document.getElementById('diffHard').onclick = () => { difficulty = 'hard'; startQuestions(); };
+  document.getElementById('diffCancel').onclick = () => {
+    document.body.removeChild(diffPopup);
+    alert('取消答题，无法喂食宠物。');
+    callback(false);
+  };
+
+  function validateSudokuInput(popup) {
+    // 简单校验：检查空输入和非数字
+    const inputs = popup.querySelectorAll('input:not([readonly])');
+    for(let input of inputs) {
+      if(input.value.trim() === '' || isNaN(input.value) || input.value < 1 || input.value > 9) {
+        alert('请填写1-9的数字，不允许为空');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function askNext() {
+    // 这里只有一道数独题，循环一次就结束
+    if (currentIndex >= 1) {
+      if (answersCorrect >= 1) {
+        alert('全部答对！可以喂宠物啦 🍗');
+        callback(true);
+      } else {
+        alert('有些没答对呢，再试试吧！🐾');
+        callback(false);
+      }
+      return;
+    }
+
+    // 取出数独题目
+    const sudokuBoard = sudokuPuzzles[difficulty][0];
+    if(!sudokuBoard){
+      alert('该难度的数独题目暂未准备好，自动跳过。');
+      currentIndex++;
+      askNext();
+      return;
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `
+      <p>请完成这道${difficulty}数独，完成后点击“确认”继续。</p>
+      ${generateSudokuHTML(sudokuBoard)}
+      <button id="confirmSudoku">确认</button>
+      <button id="cancelSudoku" style="color:red;">取消</button>
+    `;
+    const popup = document.createElement('div');
+    popup.style.position = 'fixed';
+    popup.style.top = '50%';
+    popup.style.left = '50%';
+    popup.style.transform = 'translate(-50%, -50%)';
+    popup.style.background = '#fff';
+    popup.style.padding = '20px';
+    popup.style.border = '2px solid #666';
+    popup.style.zIndex = '99999';
+    popup.style.fontFamily = "'Press Start 2P', monospace";
+    popup.appendChild(wrapper);
+    document.body.appendChild(popup);
+
+    document.getElementById('confirmSudoku').onclick = function() {
+      if(!validateSudokuInput(popup)) return;
+      // 这里暂时不做复杂数独逻辑校验，默认正确
+      document.body.removeChild(popup);
+      answersCorrect++;
+      currentIndex++;
+      askNext();
+    };
+    document.getElementById('cancelSudoku').onclick = function() {
+      document.body.removeChild(popup);
+      alert('取消答题，无法喂食宠物。');
+      callback(false);
+    };
+  }
+}   
+    
+      // 宠物随机移动（简单AI）
+      function movePetRandom() {
+        const moves = [
+          [0,1], [0,-1], [1,0], [-1,0],
+          [1,1], [-1,-1], [1,-1], [-1,1]
+        ];
+        let validMoves = moves.filter(([dx,dy]) => {
+          const nx = pet.x + dx;
+          const ny = pet.y + dy;
+          return nx >= 0 && nx < gridCount && ny >= 0 && ny < gridCount &&
+                 !(nx === player.x && ny === player.y); // 不撞玩家
+        });
+        if (validMoves.length === 0) return;
+    
+        let [dx, dy] = validMoves[Math.floor(Math.random() * validMoves.length)];
+        pet.x += dx;
+        pet.y += dy;
+    
+        // 心情随时间慢慢下降
+        pet.mood = Math.max(0, pet.mood - 0.1);
+    
+        updateStatus();
+        draw();
+      }
+    
+      // 监听键盘
+      window.addEventListener('keydown', function(e) {
+        switch (e.key) {
+          case 'ArrowUp': movePlayer(0, -1); break;
+          case 'ArrowDown': movePlayer(0, 1); break;
+          case 'ArrowLeft': movePlayer(-1, 0); break;
+          case 'ArrowRight': movePlayer(1, 0); break;
+        }
+      });
+    
+      // 定时让宠物动起来
+      setInterval(movePetRandom, 1000);
+    
+      // 初始化
+      updateStatus();
+      draw();
     }
     
 
